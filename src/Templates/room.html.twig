@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    Страница с игрой
+{% endblock %}
+
+{% block body %}
+    Новая игра успешно создана. Ожидаем игроков
+    <h1>Код игры: <b>{{ room.code }}</b></h1>
+
+    Список игроков:
+
+    {% for player in room.usersToRooms %}
+        <li>
+            {{ player.player.username }}
+            {% if player.isOwner == true %}
+                <span style="color: #55e100">Владелец</span>
+            {% endif %}
+        </li>
+    {% endfor %}
+{% endblock %}

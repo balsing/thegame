@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>{% block title %}Welcome!{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text></svg>">
+        {# Run `composer require symfony/webpack-encore-bundle` to start using Symfony UX #}
+        {% block stylesheets %}
+            {{ encore_entry_link_tags('app') }}
+        {% endblock %}
+
+        {% block javascripts %}
+            {{ encore_entry_script_tags('app') }}
+        {% endblock %}
+    </head>
+    <body>
+        {% block body %}
+
+        {% endblock %}
+        <script src="https://cdn.jsdelivr.net/gh/centrifugal/centrifuge-js@2.8.4/dist/centrifuge.min.js"></script>
+        <script type="text/javascript">
+            const container = document.getElementById('counter')
+            const centrifuge = new Centrifuge("ws://localhost:8000/connection/websocket");
+            centrifuge.setToken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxODZhZDg2Yi05ZjViLTRkMzMtOGE2MS00OTcyYmQ4NTA0ZmIifQ.8V9HLMa3abrgyKwnVqmwvdb3ZnGW2K3xV2USdbxvMKc");
+
+            centrifuge.on('connect', function(ctx) {
+                console.log("connected", ctx);
+            });
+
+            centrifuge.on('disconnect', function(ctx) {
+                console.log("disconnected", ctx);
+            });
+
+            centrifuge.subscribe("ccac3ee7-5e09-4516-b15e-1a4cef92d104", function(ctx) {
+                container.innerHTML = ctx.data.value;
+                document.title = ctx.data.value;
+            });
+
+            centrifuge.connect();
+        </script>
+    </body>
+</html>
