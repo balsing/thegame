@@ -1,0 +1,169 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    Страница с игрой
+{% endblock %}
+
+{% block body %}
+    <style>
+        #question {
+            min-height: 300px;
+            display: flex;
+        }
+
+        .question {
+            margin: auto;
+        }
+
+        #answers .card .card-reveal{
+            top: 100%;
+            display: block !important;
+            transition: top 1s ease-in;
+        }
+        #answers .card{
+            overflow: hidden !important;
+        }
+        #answers .card.card-hidden .card-reveal{
+            top: 0;
+
+        }
+    </style>
+    <div class="row">
+        <div class="col s6 offset-s3">
+            <div class="progress">
+                <div class="determinate" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col s2">
+            <ul class="players_list">
+                {% for player in room.usersToRooms %}
+                    <li>
+                        {{ player.player.nickname }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col s8">
+            <div id="question">
+                <h2 class="question" style="color: #999">Сейчас здесь будет вопрос...</h2>
+            </div>
+            <div id="answers">
+
+            </div>
+        </div>
+        <div class="col s8 offset-s1" style="margin-top: 150px;">
+            <a id="next_question" class="waves-effect waves-light btn">Следующий вопрос</a>
+            <a id="show_all" class="waves-effect waves-light btn">Открыть все ответы</a>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/gh/centrifugal/centrifuge-js@2.8.4/dist/centrifuge.min.js"></script>
+    <script type="text/javascript">
+        // todo: https://albert-gonzalez.github.io/easytimer.js/#basicUsageExample
+/*        function startTimer(seconds) {
+            var speed = 4;
+            var timer = seconds * speed;
+            setInterval(function () {
+
+
+                $('.progress .determinate').width( timer/seconds / speed * 100 + '%');
+
+
+                if (--timer < 0) {
+                    timer = seconds;
+                }
+            }, 1000 / speed);
+        }
+
+        startTimer(60);*/
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function addCard(card) {
+            var cardImage = $('<div class="card-image" />').append('<img src="' + card.file + '">').append('<span class="card-title">' + card.title + '</span>');
+            var cardReveal = $('<div class="card-reveal"><span class="card-title">'+card.title+'</span></div>');
+
+            var cardDiv = $('<div class="card card-hidden" data-id="' + card.id + '" />').append(cardImage).append(cardReveal);
+            $('<div class="col s4"/>').append(cardDiv).hide().fadeIn(600).appendTo('#answers');
+        }
+
+        function printQuestion(question) {
+            $('#question').html('<h2 class="question">' + question.text + '</h2>');
+        }
+
+        function showResults(results) {
+
+        }
+
+        function process(ctx) {
+            switch (ctx.data.action) {
+                case "question":
+                    printQuestion(ctx.data.question);
+                    break;
+/*                case "add_card":
+                    addCard(ctx.data.card);
+                    break;*/
+                case "new_answer":
+                    $("#question").animate({ 'min-height': "100px" }, 'fast')
+                    addCard(ctx.data.card);
+                    console.log(ctx);
+                    break;
+                case "showResults":
+                    showResults(ctx.data.card);
+                    break;
+                default:
+                    console.log(ctx);
+
+            }
+        }
+
+        $('#next_question').on('click', function () {
+            $('#answers').html('');
+            $.get('/action/{{ room.id }}/next');
+
+            $("#question").animate({ 'min-height': "300px" }, 'fast');
+            var btn = $(this);
+            btn.prop('disabled', true);
+            setTimeout(function () {
+                btn.prop('disabled', false);
+            }, 5 * 1000);
+        });
+
+        $('#show_all').on('click', function (){
+            $('.card').toggleClass('card-hidden');
+        });
+
+        $('#answers').on('click', '.card-reveal', function () {
+            $(this).parents('.card').removeClass('card-hidden');
+        })
+
+        $('#exit').on('click', function (){
+            $('.card').toggleClass('card-hidden');
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const cookie = getCookie('token');
+            const centrifuge = new Centrifuge("ws://localhost:8000/connection/websocket");
+            centrifuge.setToken(cookie);
+
+            centrifuge.on('connect', function (ctx) {
+                console.log("connected", ctx);
+            });
+
+            centrifuge.on('disconnect', function (ctx) {
+                console.log("disconnected", ctx);
+            });
+
+            centrifuge.subscribe("room_{{ room.id }}", process);
+
+            centrifuge.subscribe("user_{{ app.user.id }}", process);
+
+            centrifuge.connect();
+        }, false);
+    </script>
+{% endblock %}

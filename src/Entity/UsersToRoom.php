@@ -3,7 +3,10 @@
 namespace App\Entity;
 
 use App\Repository\UsersToRoomRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\ORM\PersistentCollection;
 
 /**
  * @ORM\Entity(repositoryClass=UsersToRoomRepository::class)
@@ -33,6 +36,22 @@ class UsersToRoom
      * @ORM\Column(type="boolean")
      */
     private bool $isOwner = false;
+
+    /**
+     * @ORM\ManyToMany(targetEntity=Card::class)
+     */
+    private Collection $cards;
+
+    /**
+     * @ORM\Column(type="integer")
+     */
+    private int $score;
+
+    public function __construct()
+    {
+        $this->score = 0;
+        $this->cards = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -71,6 +90,42 @@ class UsersToRoom
     public function setIsOwner(bool $isOwner): self
     {
         $this->isOwner = $isOwner;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Card[]
+     */
+    public function getCards(): Collection
+    {
+        return $this->cards;
+    }
+
+    public function addCard(Card $card): self
+    {
+        if (!$this->cards->contains($card)) {
+            $this->cards[] = $card;
+        }
+
+        return $this;
+    }
+
+    public function removeCard(Card $card): self
+    {
+        $this->cards->removeElement($card);
+
+        return $this;
+    }
+
+    public function getScore(): ?int
+    {
+        return $this->score;
+    }
+
+    public function setScore(int $score): self
+    {
+        $this->score = $score;
 
         return $this;
     }

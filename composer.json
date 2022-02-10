@@ -21,6 +21,7 @@
         "doctrine/doctrine-migrations-bundle": "^3.2",
         "doctrine/orm": "^2.10",
         "firebase/php-jwt": "^5.5",
+        "qbbr/pgsql-doctrine-random-function": "^1.0",
         "sensio/framework-extra-bundle": "^6.2",
         "symfony/asset": "5.4.*",
         "symfony/console": "5.4.*",

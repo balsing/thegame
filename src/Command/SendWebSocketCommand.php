@@ -3,6 +3,10 @@
 namespace App\Command;
 
 use App\Entity\Player;
+use App\Repository\RoomRepository;
+use App\Repository\UserRepository;
+use App\Services\CardService;
+use App\Services\QuestionService;
 use App\Services\WebSocketService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -17,12 +21,24 @@ class SendWebSocketCommand extends Command
     protected static $defaultName = 'app:send-message';
     protected static $defaultDescription = 'Add a short description for your command';
     private WebSocketService $service;
+    private UserRepository $userRepository;
+    private CardService $answerService;
+    private RoomRepository $roomRepository;
+    private QuestionService $questionService;
 
     public function __construct(
+        CardService      $answerService,
+        UserRepository   $userRepository,
+        QuestionService $questionService,
+        RoomRepository $roomRepository,
         WebSocketService $service,
-        string $name = null
+        string           $name = null
     )
     {
+        $this->roomRepository = $roomRepository;
+        $this->questionService = $questionService;
+        $this->answerService = $answerService;
+        $this->userRepository = $userRepository;
         $this->service = $service;
         parent::__construct($name);
     }
@@ -37,10 +53,15 @@ class SendWebSocketCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        //$user = $this->userRepository->find(3);
 
-        $player = new Player('Денис');
-        $player->setUuid(UuidV4::fromString('e1f0320e-cee5-4863-8d86-1c045eb51207'));
-        $token = $this->service->sendMessage($player, 'Привет из сообщения');
+        //$answer = $this->answerService->getById(3);
+
+        $room = $this->roomRepository->find(45);
+        $question = $this->questionService->getNext($room);
+
+
+        $token = $this->service->sendQuestionToRoom($room, $question);
         dd($token);
 
         return Command::SUCCESS;

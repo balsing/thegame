@@ -31,24 +31,20 @@ class Room
     private RoomStatus $status;
 
     /**
-     * @ORM\Column(type="json", options={"comment":"Игроки и их счёт"})
-     */
-    private array $players = [];
-
-    /**
-     * @ORM\Column(type="array", nullable=true)
-     */
-    private array $questions = [];
-
-    /**
-     * @ORM\Column(type="array", nullable=true)
-     */
-    private array $cards = [];
-
-    /**
      * @ORM\OneToMany(targetEntity=UsersToRoom::class, mappedBy="room")
      */
-    private $usersToRooms;
+    private Collection $usersToRooms;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class)
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private ?User $owner;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=Stage::class)
+     */
+    private ?Stage $lastStage;
 
     public function __construct()
     {
@@ -156,6 +152,30 @@ class Room
                 $usersToRoom->setRoom(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    public function setOwner(?User $owner): self
+    {
+        $this->owner = $owner;
+
+        return $this;
+    }
+
+    public function getLastStage(): ?Stage
+    {
+        return $this->lastStage;
+    }
+
+    public function setLastStage(?Stage $lastStage): self
+    {
+        $this->lastStage = $lastStage;
 
         return $this;
     }

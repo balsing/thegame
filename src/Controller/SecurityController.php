@@ -17,10 +17,11 @@ use Symfony\Component\Security\Http\Authentication\UserAuthenticatorInterface;
 class SecurityController extends AbstractController
 {
     /**
-     * @Route("/login", name="app_login")
+     * @Route("/login_base", name="app_login")
      */
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
+        return $this->redirectToRoute('app_register');
         if ($this->getUser()) {
             return $this->redirectToRoute('lobby_index');
         }
@@ -42,7 +43,7 @@ class SecurityController extends AbstractController
     }
 
     /**
-     * @Route("/register", name="app_register")
+     * @Route("/login", name="app_register")
      */
     public function register(Request $request, UserPasswordHasherInterface $userPasswordHasher, UserAuthenticatorInterface $userAuthenticator, BaseAuthenticator $authenticator, EntityManagerInterface $entityManager): Response
     {
@@ -51,11 +52,10 @@ class SecurityController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // encode the plain password
             $user->setPassword(
                 $userPasswordHasher->hashPassword(
                     $user,
-                    $form->get('plainPassword')->getData()
+                    '123456789'
                 )
             );
 

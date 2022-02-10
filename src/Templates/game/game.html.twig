@@ -1,0 +1,92 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    Страница с игрой
+{% endblock %}
+
+{% block body %}
+    <div id="question">
+        Вопросы
+    </div>
+    <div id="cards" class="row">
+
+    </div>
+
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/gh/centrifugal/centrifuge-js@2.8.4/dist/centrifuge.min.js"></script>
+    <script type="text/javascript">
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function addCard(card) {
+            var cardImage = $('<div class="card-image" />').append('<img src="' + card.file + '">')/*.append('<span class="card-title">' + card.title + '</span>')*/;
+            var cardDiv = $('<div class="card" data-id="' + card.id + '" />').append(cardImage);
+            cardDiv.append('<div class="card-action"><a href="#" class="action-button">Выбрать</a></div>');
+            $('<div class="col s6 m4 xl3"/>').append(cardDiv).hide().fadeIn(600).appendTo('#cards');
+        }
+
+        function printQuestion(question) {
+            $('#question').html('<h1 class="question">'+question.text+'</h1>');
+        }
+
+        function showResults(results) {
+
+        }
+
+        function process(ctx) {
+            switch (ctx.data.action){
+                case "question":
+                    printQuestion(ctx.data.question);
+                    break;
+                case "add_card":
+                    addCard(ctx.data.card);
+                    break;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function (){
+            const cookie = getCookie('token');
+            const centrifuge = new Centrifuge("ws://192.168.3.2:8000/connection/websocket");
+            centrifuge.setToken(cookie);
+
+            centrifuge.on('connect', function(ctx) {
+                console.log("connected", ctx);
+            });
+
+            centrifuge.on('disconnect', function(ctx) {
+                console.log("disconnected", ctx);
+            });
+
+            centrifuge.subscribe("room_{{ room.id }}", process);
+
+            centrifuge.subscribe("user_{{ app.user.id }}", process);
+
+            centrifuge.connect();
+
+            // Попробуем запросить карты
+            $.get('/action/{{ room.id }}/get_cards', function (data){
+                data.forEach(addCard);
+            });
+
+            $('#cards').on('click','.action-button', function (){
+                let card = $(this).parents('.card');
+                let cardId = card.attr('data-id');
+                $.post('/action/{{ room.id }}/choice', {
+                    'card': cardId
+                }, function () {
+                    card.parent().remove();
+                })
+            });
+        }, false);
+    </script>
+{% endblock %}

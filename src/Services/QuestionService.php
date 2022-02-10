@@ -2,35 +2,24 @@
 
 namespace App\Services;
 
-use GameData\Question\Question;
-use Symfony\Component\Yaml\Yaml;
+use App\Entity\Question;
+use App\Entity\Room;
+use App\Repository\QuestionRepository;
 
 class QuestionService
 {
     protected array $questions = [];
+    private QuestionRepository $repository;
 
-    public function __construct(string $baseDir)
+    public function __construct(
+        QuestionRepository $repository
+    )
     {
-        $value = Yaml::parseFile($baseDir . '/src/GameData/Questions/questions.yaml');
-
-        foreach ($value['questions'] as $item){
-            $this->questions[$item['id']] = new Question($item['id'], $item['text']);
-        }
+        $this->repository = $repository;
     }
 
-    /**
-     * @param int $count
-     * @return Question[]
-     */
-    public function getRandom(int $count = 10): array
+    public function getNext(Room $room): Question
     {
-        $question = $this->questions;
-        shuffle($question);
-        return $question;
-    }
-
-    public function getById(int $id): Question
-    {
-        return $this->questions[$id];
+        return $this->repository->getNextQuestion($room);
     }
 }

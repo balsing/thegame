@@ -5,17 +5,75 @@
 {% endblock %}
 
 {% block body %}
-    Новая игра успешно создана. Ожидаем игроков
-    <h1>Код игры: <b>{{ room.code }}</b></h1>
+    <div class="container">
+        <div class="row">
+            <div class="col s12">
+                <h2>Код игры: <b>{{ room.code }}</b></h2>
 
-    Список игроков:
+                Список игроков:
 
-    {% for player in room.usersToRooms %}
-        <li>
-            {{ player.player.username }}
-            {% if player.isOwner == true %}
-                <span style="color: #55e100">Владелец</span>
-            {% endif %}
-        </li>
-    {% endfor %}
+                <ul class="players_list">
+                {% for player in room.usersToRooms %}
+                    <li>
+                        {{ player.player.nickname }}
+                        {% if player.isOwner == true %}
+                            <span style="color: #55e100">Владелец</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+                </ul>
+                <a class="btn waves-effect waves-light" href="{{ path('lobby_start', {room: room.id}) }}">Начать</a>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/gh/centrifugal/centrifuge-js@2.8.4/dist/centrifuge.min.js"></script>
+    <script type="text/javascript">
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        function process(ctx) {
+            switch (ctx.data.action){
+                case "new_player":
+                    addUser(ctx.data.user);
+                    break;
+                case "start_game":
+                    startGame();
+                    break;
+                default:
+                    console.log(ctx);
+            }
+        }
+
+        function startGame() {
+            document.location.href = '/room/{{ room.id }}/client';
+        }
+
+        function addUser(user){
+            $('.players_list').append('<li>' + user.nickname + '</li>');
+        }
+
+        document.addEventListener('DOMContentLoaded', function (){
+            const cookie = getCookie('token');
+            const centrifuge = new Centrifuge("ws://localhost:8000/connection/websocket");
+            centrifuge.setToken(cookie);
+
+            centrifuge.on('connect', function(ctx) {
+                console.log("connected", ctx);
+            });
+
+            centrifuge.on('disconnect', function(ctx) {
+                console.log("disconnected", ctx);
+            });
+
+            centrifuge.subscribe("room_{{ room.id }}", process);
+            centrifuge.subscribe("user_{{ app.user.id }}", process);
+
+            centrifuge.connect();
+        }, false);
+    </script>
 {% endblock %}

@@ -13,12 +13,11 @@ class LobbyType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('login', TextType::class, [
-                'label' => 'Представьтесь',
-                'required' => true,
-            ])
             ->add('new_game', SubmitType::class, [
-                'label' => 'Создать',
+                'label' => 'Создать новую игру',
+                'attr' => [
+                    'class'=> 'btn waves-effect waves-light'
+                ],
             ])
             ->add('code', TextType::class, [
                 'label' => 'Введите код комнаты',
@@ -26,6 +25,9 @@ class LobbyType extends AbstractType
             ])
             ->add('submit', SubmitType::class,[
                 'label' => 'Вход',
+                'attr' => [
+                    'class'=> 'btn waves-effect waves-light'
+                ],
             ])
         ;
     }
