@@ -400,4 +400,26 @@ class GameLogicService
         $this->entityManager->persist($room);
         $this->entityManager->flush();
     }
+
+    public function connected(Room $room, User $user)
+    {
+        $userToRoom = $this->getUserFromRoom($room, $user);
+        $userToRoom->setIsActive(true);
+    }
+
+    public function disconnected(Room $room, User $user)
+    {
+        $userToRoom = $this->getUserFromRoom($room, $user);
+        $userToRoom->setIsActive(false);
+    }
+
+    private function getUserFromRoom(Room $room, User $user){
+        foreach ($room->getUsersToRooms() as $player) {
+            if ($player->getPlayer() === $user) {
+                return $player;
+            }
+        }
+
+        return null;
+    }
 }

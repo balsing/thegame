@@ -1,5 +1,8 @@
 twig:
     default_path: '%kernel.project_dir%/src/Templates'
+    globals:
+        public_socket_host: '%env(PUBLIC_SOCKET_HOST)%'
+
 
 when@test:
     twig:

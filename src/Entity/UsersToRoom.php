@@ -47,9 +47,15 @@ class UsersToRoom
      */
     private int $score;
 
+    /**
+     * @ORM\Column(type="boolean", nullable=true)
+     */
+    private $isActive;
+
     public function __construct()
     {
         $this->score = 0;
+        $this->isActive = false;
         $this->cards = new ArrayCollection();
     }
 
@@ -126,6 +132,18 @@ class UsersToRoom
     public function setScore(int $score): self
     {
         $this->score = $score;
+
+        return $this;
+    }
+
+    public function getIsActive(): ?bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(?bool $isActive): self
+    {
+        $this->isActive = $isActive;
 
         return $this;
     }

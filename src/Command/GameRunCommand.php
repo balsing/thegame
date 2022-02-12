@@ -89,11 +89,21 @@ class GameRunCommand extends Command
         while ($sec > 0){
             sleep(1);
             if ($room !== null){
+                $userCount = 0;
+                foreach ($room->getUsersToRooms() as $usersToRoom) {
+                    if ($usersToRoom->getIsActive()) {
+                        $userCount++;
+                    }
+                }
+
+                if ($userCount === 0){
+                    return $this->closeAction();
+                }
+
                 if ($room->getStatus()->getCode() === RoomStatus::EVALUATE_TIME_STATUS) {
                     // Мы можем проверить все ли ответили
                     /** @var StageResultRepository $repo */
                     $repo = $this->entityManager->getRepository(StageResult::class);
-                    $userCount = $room->getUsersToRooms()->count();
                     $results = $repo->findBy([
                         'stage' => $room->getLastStage(),
                         'isVoted' => true,
@@ -128,5 +138,10 @@ class GameRunCommand extends Command
 
     protected function sendMessage(Room $room, string $message){
         $this->socketService->sendMessageToRoom($room, WebSocketService::NOTIFY_COMMAND, $message);
+    }
+
+    private function closeAction()
+    {
+        throw new \Exception('Игра должна быть остановлена, т.к. нет подключённых клиентов');
     }
 }

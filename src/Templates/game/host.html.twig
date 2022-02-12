@@ -233,15 +233,15 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             const cookie = getCookie('token');
-            const centrifuge = new Centrifuge("ws://vm672946.vps.masterhost.tech:8000/connection/websocket");
+            const centrifuge = new Centrifuge("{{ public_socket_host }}");
             centrifuge.setToken(cookie);
 
             centrifuge.on('connect', function (ctx) {
-                console.log("connected", ctx);
+                $.get('/action/{{ room.id }}/connected');
             });
 
             centrifuge.on('disconnect', function (ctx) {
-                console.log("disconnected", ctx);
+                $.get('/action/{{ room.id }}/disconnected');
             });
 
             centrifuge.subscribe("room_{{ room.id }}", process);

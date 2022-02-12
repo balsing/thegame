@@ -104,4 +104,30 @@ class GameActionController extends AbstractController
 
         return $this->json([], $result ? Response::HTTP_CREATED : Response::HTTP_BAD_REQUEST);
     }
+
+    /**
+     * @Route("/{room<\d+>}/connected", name="connected")
+     */
+    public function connected(
+        GameLogicService $gameLogicService,
+        Room $room
+    )
+    {
+        $gameLogicService->connected($room, $this->getUser());
+
+        return $this->json([]);
+    }
+
+    /**
+     * @Route("/{room<\d+>}/disconnected", name="disconnected")
+     */
+    public function disconnected(
+        GameLogicService $gameLogicService,
+        Room $room
+    )
+    {
+        $gameLogicService->disconnected($room, $this->getUser());
+
+        return $this->json([]);
+    }
 }
