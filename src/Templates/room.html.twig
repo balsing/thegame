@@ -19,7 +19,7 @@
                         </li>
                     {% endfor %}
                 </ul>
-                {% if room.owner === app.user %}
+                {% if room.owner == app.user %}
                     <a class="btn waves-effect waves-light" href="{{ path('lobby_start', {room: room.id}) }}">Начать</a>
                 {% endif %}
             </div>

@@ -27,6 +27,6 @@ class RunGameHandler implements MessageHandlerInterface
             return;
         }
 
-        exec('bin/console game:run '.$message->getRoomId());
+        exec('bin/console game:run '.$message->getRoomId() . ' > /dev/null 2>&1 &');
     }
 }

@@ -404,16 +404,21 @@ class GameLogicService
     public function connected(Room $room, User $user)
     {
         $userToRoom = $this->getUserFromRoom($room, $user);
-        $userToRoom->setIsActive(true);
+        if($userToRoom !== null){
+            $userToRoom->setIsActive(true);
+        }
     }
 
     public function disconnected(Room $room, User $user)
     {
         $userToRoom = $this->getUserFromRoom($room, $user);
-        $userToRoom->setIsActive(false);
+        if($userToRoom !== null){
+            $userToRoom->setIsActive(false);
+        }
     }
 
-    private function getUserFromRoom(Room $room, User $user){
+    private function getUserFromRoom(Room $room, User $user): ?UsersToRoom
+    {
         foreach ($room->getUsersToRooms() as $player) {
             if ($player->getPlayer() === $user) {
                 return $player;
