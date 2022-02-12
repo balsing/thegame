@@ -50,20 +50,20 @@ services:
         hard: 65535
 
   ### PHP-CONSUMER ##############################################
-  consumer:
-    restart: always
-    volumes:
-      - ./.docker/conf/php/php.ini:/usr/local/etc/php/conf.d/php.ini
-      - ./.docker/conf/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
-      - .:/var/www/html
-    build:
-      dockerfile: .docker/Dockerfile
-      context: .
-      args:
-        UID: 1000
-        GID: 1000
-    user: 1000:1000
-    command: [ "bin/console", "messenger:consume", "async", "-vv", "--limit=10" ]
+#  consumer:
+#    restart: always
+#    volumes:
+#      - ./.docker/conf/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+#      - ./.docker/conf/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+#      - .:/var/www/html
+#    build:
+#      dockerfile: .docker/Dockerfile
+#      context: .
+#      args:
+#        UID: 1000
+#        GID: 1000
+#    user: 1000:1000
+#    command: [ "bin/console", "messenger:consume", "async", "-vv", "--limit=10" ]
 
 volumes:
   db-data:

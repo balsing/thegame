@@ -392,9 +392,6 @@ class GameLogicService
 
     public function start(Room $room)
     {
-        $message = new RunGameMessage($room->getId());
-        $this->bus->dispatch($message);
-
         $room->setStatus($this->getStatus(RoomStatus::RUNNING_STATUS));
 
         $this->entityManager->persist($room);
@@ -407,6 +404,9 @@ class GameLogicService
         if($userToRoom !== null){
             $userToRoom->setIsActive(true);
         }
+
+        $this->entityManager->persist($userToRoom);
+        $this->entityManager->flush();
     }
 
     public function disconnected(Room $room, User $user)
@@ -415,6 +415,9 @@ class GameLogicService
         if($userToRoom !== null){
             $userToRoom->setIsActive(false);
         }
+
+        $this->entityManager->persist($userToRoom);
+        $this->entityManager->flush();
     }
 
     private function getUserFromRoom(Room $room, User $user): ?UsersToRoom
