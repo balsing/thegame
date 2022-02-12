@@ -10,7 +10,7 @@ use Doctrine\Migrations\AbstractMigration;
 /**
  * Auto-generated Migration: Please modify to your needs!
  */
-final class Version20220211165100 extends AbstractMigration
+final class Version20220212232319 extends AbstractMigration
 {
     public function getDescription(): string
     {
@@ -20,12 +20,12 @@ final class Version20220211165100 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE stage_result ADD is_voted BOOLEAN DEFAULT NULL');
+        $this->addSql('ALTER TABLE users_to_room ADD is_active BOOLEAN DEFAULT NULL');
     }
 
     public function down(Schema $schema): void
     {
         // this down() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE stage_result DROP is_voted');
+        $this->addSql('ALTER TABLE users_to_room DROP is_active');
     }
 }
