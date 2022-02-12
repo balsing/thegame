@@ -89,7 +89,7 @@ class GameRunCommand extends Command
         while ($sec > 0){
             sleep(1);
             if ($room !== null){
-                $userCount = 0;
+/*                $userCount = 0;
                 foreach ($room->getUsersToRooms() as $usersToRoom) {
                     if ($usersToRoom->getIsActive()) {
                         $userCount++;
@@ -98,7 +98,7 @@ class GameRunCommand extends Command
 
                 if ($userCount === 0){
                     return $this->closeAction();
-                }
+                }*/
 
                 if ($room->getStatus()->getCode() === RoomStatus::EVALUATE_TIME_STATUS) {
                     // Мы можем проверить все ли ответили

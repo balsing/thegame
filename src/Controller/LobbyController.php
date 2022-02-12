@@ -90,7 +90,7 @@ class LobbyController extends AbstractController
         }
 
         if ($room->getStatus()->getCode() === RoomStatus::NEW_STATUS){
-            exec('bin/console game:run '.$room->getId() . ' > /dev/null 2>&1 &');
+            exec('php /var/www/html/bin/console game:run '.$room->getId() . ' > /dev/null 2>&1 &');
             $gameLogicService->start($room);
         }
 
