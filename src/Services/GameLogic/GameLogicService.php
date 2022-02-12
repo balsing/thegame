@@ -2,8 +2,6 @@
 
 namespace App\Services\GameLogic;
 
-use App\Dto\Game\GameStartRequest;
-use App\Entity\Player;
 use App\Entity\Question;
 use App\Entity\Room;
 use App\Entity\RoomStatus;
@@ -16,17 +14,13 @@ use App\Repository\StageResultRepository;
 use App\Services\CardService;
 use App\Services\QuestionService;
 use App\Services\WebSocketService;
-use App\WebSocketMessages\NewAnswerMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use App\Message\RunGameMessage;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\DelayStamp;
-use Symfony\Component\Security\Core\User\UserInterface;
 
 class GameLogicService
 {
-    public const BASE_CARD_COUNT = 6;
 
     private EntityManagerInterface $entityManager;
     private QuestionService $questionService;
@@ -89,10 +83,11 @@ class GameLogicService
 
     function generateRandomString()
     {
-        $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        ;
+        $characters = GameLogicSettings::CODE_CHARACTERS;
         $charactersLength = strlen($characters);
         $randomString = '';
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < GameLogicSettings::CODE_LENGTH; $i++) {
             $randomString .= $characters[rand(0, $charactersLength - 1)];
         }
         return $randomString;
@@ -120,6 +115,7 @@ class GameLogicService
 
     public function nextQuestion(Room $room)
     {
+        $this->entityManager->refresh($room);
         $this->closeStage($room);
         $this->fillCards($room);
         $question = $this->getNextQuestion($room);
@@ -137,7 +133,8 @@ class GameLogicService
 
 
         foreach ($room->getUsersToRooms() as $player) {
-            $needCards = self::BASE_CARD_COUNT - $player->getCards()->count();
+            $this->entityManager->refresh($player);
+            $needCards = GameLogicSettings::CARD_PLAYER_COUNT - $player->getCards()->count();
             while ($needCards > 0) {
                 $card = array_shift($allCards);
                 $player->addCard($card);
@@ -161,18 +158,16 @@ class GameLogicService
 
     private function closeStage(Room $room)
     {
-        // ToDo: мы должны пройтись по всем игрокам и посмотреть, ответили они или нет
-        // ToDo: и если не ответили, то наказать их забрав любую карту
+        $stage = $room->getLastStage();
 
-        $stages = $this->stageRepository->findBy([
-            'room' => $room,
-            'status' => 'open'
-        ]);
-
-        foreach ($stages as $stage) {
-            $stage->setStatus('closed');
-            $this->entityManager->persist($stage);
+        if($stage === null){
+            return;
         }
+
+        $stage->setStatus('closed');
+        $room->setLastStage(null);
+        $this->entityManager->persist($stage);
+        $this->entityManager->persist($room);
 
         $this->entityManager->flush();
     }
@@ -184,7 +179,13 @@ class GameLogicService
         $stage->setQuestion($question);
         $stage->setRoom($room);
 
+
         $this->entityManager->persist($stage);
+        $this->entityManager->flush();
+
+        $room->setStatus($this->getStatus(RoomStatus::ACTION_TIME_STATUS));
+        $room->setLastStage($stage);
+        $this->entityManager->persist($room);
         $this->entityManager->flush();
     }
 
@@ -197,7 +198,7 @@ class GameLogicService
         }
     }
 
-    public function choice(Room $room, User $user, int $cardId): bool
+    public function choice(Room $room, User $user, int $cardId, bool $isAuto = false): bool
     {
         $card = $this->cardService->getById($cardId);
         $currentPlayer = null;
@@ -221,7 +222,7 @@ class GameLogicService
             $this->entityManager->flush();
 
             $card->setTitle($user->getNickname());
-            $this->socketService->sendNewAnswerMessage($room->getOwner(), $card);
+            $this->socketService->sendNewAnswerMessage($room->getOwner(), $card, $isAuto);
 
             return true;
         } else {
@@ -239,10 +240,26 @@ class GameLogicService
 
     private function checkIsNewChoice(Stage $stage, UsersToRoom $currentPlayer): bool
     {
+        return $this->getStageResult($stage,$currentPlayer) === null;
+    }
+
+    private function getStageResult(Stage $stage, UsersToRoom $currentPlayer): ?StageResult
+    {
         return $this->stageResultRepository->findOneBy([
                 'stage' => $stage,
                 'player' => $currentPlayer
-            ]) === null;
+            ]);
+    }
+
+    /**
+     * @param Stage $stage
+     * @return StageResult[]
+     */
+    private function getStageResults(Stage $stage): array
+    {
+        return $this->stageResultRepository->findBy([
+            'stage' => $stage,
+        ]);
     }
 
     private function isUserAlreadyInRoom(Room $room, User $user): bool
@@ -254,5 +271,133 @@ class GameLogicService
         }
 
         return false;
+    }
+
+    public function getQuestion(Room $room)
+    {
+        $lastStage = $room->getLastStage();
+        if($lastStage !== null){
+            return $lastStage->getQuestion()->getText();
+        }
+
+        return 'Сейчас здесь будет вопрос...';
+    }
+
+    public function voteAction(Room $room)
+    {
+        $room->setStatus($this->getStatus(RoomStatus::EVALUATE_TIME_STATUS));
+        $this->answerAFKPlayers($room);
+        $this->sendVoteCommand($room);
+    }
+
+    private function answerAFKPlayers(Room $room)
+    {
+        $stage = $room->getLastStage();
+        // Мы проверяем что все игроки ответили, если кто-то не ответил, мы должны ответить за него
+        $results = $this->stageResultRepository->findBy(['stage' => $stage]);
+
+
+        $hasAnswerPlayers = [];
+        foreach ($results as $result){
+            $hasAnswerPlayers[$result->getPlayer()->getId()] = $result->getPlayer();
+        }
+
+
+        $players = $room->getUsersToRooms();
+
+
+        foreach ($players as $player){
+            if (!array_key_exists($player->getId(), $hasAnswerPlayers)){
+                $cards = $player->getCards()->toArray();
+
+                shuffle($cards);
+                $card = reset($cards);
+
+                $this->choice($room, $player->getPlayer(), $card->getId(), true);
+                $this->sendRemoveCard($player->getPlayer(), $card->getId());
+            }
+        }
+    }
+
+    private function sendVoteCommand(Room $room)
+    {
+
+        $results = $this->getStageResults($room->getLastStage());
+        foreach ($results as $result){
+            $users[] = [
+                'id' => $result->getPlayer()->getId(),
+                'title' => $result->getPlayer()->getPlayer()->getNickname(),
+                'image' => $result->getCard()->getFile(),
+            ];
+        }
+        $this->socketService->sendMessageToRoom($room, WebSocketService::VOTE_COMMAND, [
+            'users' => $users,
+        ]);
+    }
+
+    private function sendRemoveCard(User $user, $cardId)
+    {
+        $this->socketService->sendMessageToUser($user, WebSocketService::REMOVE_CARD_COMMAND, ['card' => $cardId]);
+    }
+
+    public function vote(Room $room, ?User $user, int $userId)
+    {
+        $currentPlayer = null;
+        $targetPlayer = null;
+
+        foreach ($room->getUsersToRooms() as $player) {
+            if ($player->getPlayer() === $user) {
+                $currentPlayer = $player;
+            }
+
+            if ($player->getId() === $userId) {
+                $targetPlayer = $player;
+            }
+        }
+
+        if(GameLogicSettings::CHECK_SELF_VOTE){
+            if ($targetPlayer->getId() === $currentPlayer->getId()) {
+                if ($room->getUsersToRooms()->count() > 1) {
+                    return false;
+                } elseif (GameLogicSettings::CHECK_SELF_VOTE_ONE_PLAYER) {
+                    return false;
+                }
+            }
+        }
+
+        $stage = $this->getCurrentStage($room);
+
+        $result = $this->getStageResult($stage,$currentPlayer);
+
+        if($result === null){
+            return false;
+        }
+
+        if($result->getIsVoted() === true){
+            return false;
+        }
+
+        $result->setIsVoted(true);
+
+        $score = $targetPlayer->getScore();
+        $targetPlayer->setScore(++$score);
+
+        $this->entityManager->persist($result);
+        $this->entityManager->persist($targetPlayer);
+        $this->entityManager->flush();
+
+        $this->socketService->sendMessageToUser($room->getOwner(), WebSocketService::UPDATE_SCORE_FOR_USER_COMMAND, ['user' => $targetPlayer->getPlayer()->getId(), 'score' => $targetPlayer->getScore()]);
+        return true;
+    }
+
+    public function start(Room $room)
+    {
+        $message = new RunGameMessage($room->getId());
+        $this->bus->dispatch($message);
+
+        $room->setStatus($this->getStatus(RoomStatus::RUNNING_STATUS));
+
+        $this->entityManager->persist($room);
+        $this->entityManager->flush();
     }
 }

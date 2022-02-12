@@ -3,13 +3,16 @@
 namespace App\Controller;
 
 use App\Entity\Room;
+use App\Entity\RoomStatus;
 use App\Entity\User;
 use App\Form\LobbyType;
+use App\Message\RunGameMessage;
 use App\Services\GameLogic\GameLogicService;
 use App\Services\WebSocketService;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
@@ -73,7 +76,9 @@ class LobbyController extends AbstractController
      */
     public function start(
         WebSocketService $service,
-        Room                $room
+        Room                $room,
+        GameLogicService $gameLogicService,
+        MessageBusInterface $bus
     ): Response
     {
         if ($room->getOwner() !== $this->getUser()) {
@@ -84,6 +89,9 @@ class LobbyController extends AbstractController
             $service->sendMessageToUser($player->getPlayer(), WebSocketService::START_GAME_COMMAND);
         }
 
+        if ($room->getStatus()->getCode() === RoomStatus::NEW_STATUS){
+            $gameLogicService->start($room);
+        }
 
         return $this->render('game/host.html.twig', [
             'room' => $room,

@@ -35,6 +35,16 @@ class StageResult
      */
     private ?Card $card;
 
+    /**
+     * @ORM\Column(type="boolean", nullable=true)
+     */
+    private ?bool $isVoted;
+
+    public function __toString(): string
+    {
+        $this->isVoted = false;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
@@ -72,6 +82,18 @@ class StageResult
     public function setCard(?Card $card): self
     {
         $this->card = $card;
+
+        return $this;
+    }
+
+    public function getIsVoted(): ?bool
+    {
+        return $this->isVoted;
+    }
+
+    public function setIsVoted(?bool $isVoted): self
+    {
+        $this->isVoted = $isVoted;
 
         return $this;
     }

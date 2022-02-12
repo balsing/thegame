@@ -1,6 +1,6 @@
 <?php
 
-namespace App\MessageHandler;
+namespace App\Command;
 
 use App\Entity\Room;
 use App\Entity\RoomStatus;
@@ -9,65 +9,79 @@ use App\Message\RunGameMessage;
 use App\Repository\RoomRepository;
 use App\Repository\StageResultRepository;
 use App\Services\GameLogic\GameLogicService;
+use App\Services\GameLogic\GameLogicSettings;
 use App\Services\WebSocketService;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
-class RunGameHandler implements MessageHandlerInterface
+class GameRunCommand extends Command
 {
-    public const SLEEP_AFTER_QUESTION = 20;
-    public const SLEEP_AFTER_VOTE = 40;
+    protected static $defaultName = 'game:run';
+    protected static $defaultDescription = 'Add a short description for your command';
+    private EntityManagerInterface $entityManager;
+    private GameLogicService $gameLogicService;
     private RoomRepository $roomRepository;
     private WebSocketService $socketService;
-    private GameLogicService $gameLogicService;
-    private EntityManagerInterface $entityManager;
+
+    protected function configure(): void
+    {
+        $this
+            ->addArgument('roomId', InputArgument::REQUIRED, 'Argument description')
+        ;
+    }
 
     public function __construct(
         EntityManagerInterface $entityManager,
         GameLogicService $gameLogicService,
         RoomRepository $roomRepository,
-        WebSocketService $socketService
+        WebSocketService $socketService,
+        $name = null
     )
     {
         $this->entityManager = $entityManager;
         $this->gameLogicService = $gameLogicService;
         $this->roomRepository = $roomRepository;
         $this->socketService = $socketService;
+        parent::__construct($name);
     }
 
-    public function __invoke(RunGameMessage $message)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
-
-        exec('bin/console game:run '.$message->getRoomId());
-
-        return;
-
-        $room = $this->roomRepository->find($message->getRoomId());
+        $roomId = $input->getArgument('roomId');
+        $room = $this->roomRepository->find($roomId);
 
         if ($room->getStatus()->getCode() !== RoomStatus::RUNNING_STATUS) {
-            return;
+            return Command::INVALID;
         }
 
-        $this->wait(5, $room);
-        $this->sendWaitMessage($room, 5);
-        $this->sendMessage($room, 'Игра начнётся через 15 секунд');
-        $this->wait(5, $room);
+
+        $this->wait(GameLogicSettings::WAIT_FOR_CONNECTION, $room);
+        $this->sendWaitMessage($room, GameLogicSettings::WAIT_FOR_CONNECTION);
+        $this->sendMessage($room, sprintf('Игра начнётся через %s секунд',GameLogicSettings::WAIT_BEFORE_START));
+        $this->wait(GameLogicSettings::WAIT_BEFORE_START, $room);
 
         $round = 1;
-        while ($round < 20){
+        while ($round < GameLogicSettings::ROUNDS_COUNT){
             $this->gameLogicService->nextQuestion($room);
-            $this->sendWaitMessage($room, self::SLEEP_AFTER_QUESTION);
-            $this->wait(self::SLEEP_AFTER_QUESTION, $room);
+            $this->sendWaitMessage($room, GameLogicSettings::SLEEP_AFTER_QUESTION);
+            $this->wait(GameLogicSettings::SLEEP_AFTER_QUESTION, $room);
 
 
             $this->gameLogicService->voteAction($room);
-            $this->sendWaitMessage($room, self::SLEEP_AFTER_VOTE);
-            $this->wait(self::SLEEP_AFTER_VOTE, $room);
+            $this->sendWaitMessage($room, GameLogicSettings::SLEEP_AFTER_VOTE);
+            $this->wait(GameLogicSettings::SLEEP_AFTER_VOTE, $room);
 
             $round++;
         }
 
         $this->sendMessage($room, 'Игра окончена');
+
+        return Command::SUCCESS;
     }
 
     protected function wait(int $sec = 5, ?Room $room = null){

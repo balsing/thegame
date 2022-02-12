@@ -10,10 +10,12 @@ class NewAnswerMessage
 
     protected string $action = self::ACTION;
     protected Card $card;
+    protected bool $isAuto;
 
-    public function __construct(Card $card)
+    public function __construct(Card $card, bool $isAuto)
     {
         $this->card = $card;
+        $this->isAuto = $isAuto;
     }
 
     /**
@@ -46,5 +48,21 @@ class NewAnswerMessage
     public function setCard(Card $card): void
     {
         $this->card = $card;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isAuto(): bool
+    {
+        return $this->isAuto;
+    }
+
+    /**
+     * @param bool $isAuto
+     */
+    public function setIsAuto(bool $isAuto): void
+    {
+        $this->isAuto = $isAuto;
     }
 }

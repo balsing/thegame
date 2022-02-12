@@ -5,12 +5,110 @@
 {% endblock %}
 
 {% block body %}
-    <div id="question">
-        Вопросы
-    </div>
-    <div id="cards" class="row">
+    <style>
+        #vote::after{
+            content: '';
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: -5;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        #vote {
+            display: none;
+            position: absolute;
+            top: 30px;
+            left: 10px;
+            right: 10px;
+            background: #fff;
+            z-index: 5;
+            box-shadow: 0px 15px 10px 1px rgb(0 0 0 / 50%)
+        }
 
+        #vote .collection{
+            margin-bottom: 150px;
+        }
+
+        .progress-row{
+            position: relative;
+            z-index: 20;
+            background-color: #fff;
+        }
+
+        .answer-preview-item{
+            float: left;
+            display: flex;
+            flex-direction: column;
+            width: 50%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #e5e5e5;
+            background: #fff;
+        }
+
+        .answer-preview-item span{
+            text-align: center;
+        }
+        .answer-preview-item img{
+            width: auto;
+            max-width: 100%;
+            margin: auto;
+            max-height: 30vw;
+        }
+        @media (min-width: 1100px) {
+            .answer-preview-item img{
+                max-height: 300px;
+            }
+        }
+        .answer-preview:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        .answer-preview {
+            padding: 5px;
+        }
+
+        #cards .card-image img{
+            width: auto;
+            max-width: 100%;
+            margin: auto;
+            max-height: 30vw;
+        }
+        #cards .card-image img{
+            max-height: 30vw;
+        }
+    </style>
+    <div class="row progress-row">
+        <div class="col s6 offset-s3">
+            <div class="progress">
+                <div class="determinate" style="width: 100%"></div>
+            </div>
+        </div>
     </div>
+    <div id="vote">
+        <div class="answer-preview">
+
+        </div>
+    </div>
+    <div class="row">
+        <div class="col s12">
+            <div id="question">
+            </div>
+            <div id="cards" class="row">
+
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col s2">
+            <a href="/" class="btn waves-effect waves-light">Выйти</a>
+        </div>
+    </div>
+
 
     <!-- Compiled and minified CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
@@ -22,6 +120,22 @@
 
     <script src="https://cdn.jsdelivr.net/gh/centrifugal/centrifuge-js@2.8.4/dist/centrifuge.min.js"></script>
     <script type="text/javascript">
+
+        let g_timer;
+        function startTimer(seconds) {
+            var speed = 4;
+            var timer = seconds * speed;
+            if (g_timer) {
+                clearInterval(g_timer);
+            }
+            g_timer = setInterval(function () {
+                $('.progress .determinate').width( timer/seconds / speed * 100 + '%');
+                if (--timer < 0) {
+                    clearInterval(g_timer);
+                }
+            }, 1000 / speed);
+        }
+
         function getCookie(name) {
             const value = `; ${document.cookie}`;
             const parts = value.split(`; ${name}=`);
@@ -32,25 +146,54 @@
             var cardImage = $('<div class="card-image" />').append('<img src="' + card.file + '">')/*.append('<span class="card-title">' + card.title + '</span>')*/;
             var cardDiv = $('<div class="card" data-id="' + card.id + '" />').append(cardImage);
             cardDiv.append('<div class="card-action"><a href="#" class="action-button">Выбрать</a></div>');
-            $('<div class="col s6 m4 xl3"/>').append(cardDiv).hide().fadeIn(600).appendTo('#cards');
+            $('<div class="col s6 xl4"/>').append(cardDiv).hide().fadeIn(600).appendTo('#cards');
+        }
+
+        function removeCard(cardId) {
+            $('.card[data-id=' + cardId + ']').parent().remove();
         }
 
         function printQuestion(question) {
-            $('#question').html('<h1 class="question">'+question.text+'</h1>');
+            $('#question').html('<h2 class="question">'+question.text+'</h2>');
         }
 
-        function showResults(results) {
-
+        function voteStage(users) {
+            $('#vote .answer-preview').html("");
+            users.forEach(function (user){
+                let userRow = $('<div class="answer-preview-item" data-id="' + user.id + '"></div>');
+                userRow.append('<img src="'+ user.image +'" alt="'+ user.title +'">');
+                userRow.append('<span>'+user.title+'</span>');
+                $('#vote .answer-preview').append(userRow);
+            });
+            $('#vote').slideDown();
         }
+
+
 
         function process(ctx) {
             switch (ctx.data.action){
                 case "question":
                     printQuestion(ctx.data.question);
+                    $('#vote').slideUp();
                     break;
                 case "add_card":
                     addCard(ctx.data.card);
                     break;
+                case "remove_card":
+                    removeCard(ctx.data.context.card);
+                    break;
+                case "vote":
+                    voteStage(ctx.data.context.users);
+                    break;
+                case "start_timer":
+                    startTimer(ctx.data.context.seconds);
+                    break;
+                case "message":
+                    M.toast({html: ctx.data.context})
+                    break;
+
+                default:
+                    console.log(ctx);
             }
         }
 
@@ -77,6 +220,21 @@
             $.get('/action/{{ room.id }}/get_cards', function (data){
                 data.forEach(addCard);
             });
+
+            $.get('/action/{{ room.id }}/get_question', function (data){
+                printQuestion(data)
+            });
+
+
+            $('#vote').on('click', '.answer-preview-item', function (item){
+                let userId = $(this).attr('data-id');
+                $.post('/action/{{ room.id }}/vote', {
+                    'user': userId
+                }, function () {
+                    $('#vote').slideUp();
+                })
+            });
+
 
             $('#cards').on('click','.action-button', function (){
                 let card = $(this).parents('.card');

@@ -15,6 +15,14 @@
             margin: auto;
         }
 
+        #answers{
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        #answers>.col{
+            margin: auto;
+        }
         #answers .card .card-reveal{
             top: 100%;
             display: block !important;
@@ -27,6 +35,26 @@
             top: 0;
 
         }
+
+        #answers .card .card-content span{
+            padding-right: 30px;
+        }
+        #answers .card .card-content{
+            position: absolute;
+            right: 0;
+            top: 0;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 0;
+        }
+        .card-title{
+            position: relative;
+        }
+
+        .card-title .material-icons{
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
     </style>
     <div class="row">
         <div class="col s6 offset-s3">
@@ -37,46 +65,48 @@
     </div>
     <div class="row">
         <div class="col s2">
-            <ul class="players_list">
-                {% for player in room.usersToRooms %}
-                    <li>
-                        {{ player.player.nickname }}
-                    </li>
-                {% endfor %}
-            </ul>
+            <div class="players_list">
+                <ul class="collection">
+                    {% for player in room.usersToRooms %}
+                        <li class="collection-item" data-id="{{ player.player.id }}">
+                            {{ player.player.nickname }} <span class="badge">{{ player.score }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
         <div class="col s8">
             <div id="question">
                 <h2 class="question" style="color: #999">Сейчас здесь будет вопрос...</h2>
             </div>
-            <div id="answers">
-
-            </div>
         </div>
-        <div class="col s8 offset-s1" style="margin-top: 150px;">
-            <a id="next_question" class="waves-effect waves-light btn">Следующий вопрос</a>
-            <a id="show_all" class="waves-effect waves-light btn">Открыть все ответы</a>
+        <div class="col s2">
+            <a href="/" class="btn waves-effect waves-light">Выйти</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col s12">
+            <div id="answers" class="row">
+            </div>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/gh/centrifugal/centrifuge-js@2.8.4/dist/centrifuge.min.js"></script>
     <script type="text/javascript">
-        // todo: https://albert-gonzalez.github.io/easytimer.js/#basicUsageExample
-/*        function startTimer(seconds) {
+
+        let g_timer;
+        function startTimer(seconds) {
             var speed = 4;
             var timer = seconds * speed;
-            setInterval(function () {
-
-
+            if (g_timer) {
+                clearInterval(g_timer);
+            }
+            g_timer = setInterval(function () {
                 $('.progress .determinate').width( timer/seconds / speed * 100 + '%');
-
-
                 if (--timer < 0) {
-                    timer = seconds;
+                    clearInterval(g_timer);
                 }
             }, 1000 / speed);
         }
-
-        startTimer(60);*/
 
         function getCookie(name) {
             const value = `; ${document.cookie}`;
@@ -84,38 +114,90 @@
             if (parts.length === 2) return parts.pop().split(';').shift();
         }
 
-        function addCard(card) {
-            var cardImage = $('<div class="card-image" />').append('<img src="' + card.file + '">').append('<span class="card-title">' + card.title + '</span>');
+        function addCard(card, isAuto = false) {
+            var cardImage = $('<div class="card-image" />').append('<img src="' + card.file + '">');
             var cardReveal = $('<div class="card-reveal"><span class="card-title">'+card.title+'</span></div>');
+            var cardTitle = $('<div class="card-content"><span class="card-title">'+card.title+'</span></div>');
 
-            var cardDiv = $('<div class="card card-hidden" data-id="' + card.id + '" />').append(cardImage).append(cardReveal);
+            var cardDiv = $('<div class="card" data-id="' + card.id + '" />').append(cardImage).append(cardReveal).append(cardTitle);
             $('<div class="col s4"/>').append(cardDiv).hide().fadeIn(600).appendTo('#answers');
+
+            if(isAuto){
+                cardDiv.find('.card-title').append('<i class="material-icons">desktop_windows</i>');
+            } else {
+                cardDiv.find('.card-title').append('<i class="material-icons">account_circle</i>');
+                cardDiv.addClass('card-hidden');
+            }
         }
 
         function printQuestion(question) {
             $('#question').html('<h2 class="question">' + question.text + '</h2>');
+            $([document.documentElement, document.body]).animate({
+                scrollTop: 0
+            }, 1500);
         }
 
         function showResults(results) {
 
         }
 
+        function updateScoreForUser(context){
+            $('.players_list .collection-item[data-id='+context.user+']').find('.badge').html(context.score);
+            sortPlayersList();
+        }
+
+        function sortPlayersList()
+        {
+            var myList = $('.players_list .collection');
+            var listItems = myList.children('li').get();
+            listItems.sort(function(a, b) {
+                return $(b).find('.badge').text() - $(a).find('.badge').text();
+            })
+            $.each(listItems, function(idx, itm) { myList.append(itm); });
+        }
+
+        function startPreview() {
+            $('.card').removeClass('card-hidden');
+            $([document.documentElement, document.body]).animate({
+                scrollTop: $("#answers").offset().top
+            }, 700);
+
+            setTimeout(
+                function()
+                {
+                    $([document.documentElement, document.body]).animate({
+                        scrollTop: $("#answers").offset().top + $("#answers").height()
+                    }, 5000);
+                }, 2000);
+        }
+
         function process(ctx) {
             switch (ctx.data.action) {
                 case "question":
+                    $('#answers').html('');
                     printQuestion(ctx.data.question);
                     break;
-/*                case "add_card":
-                    addCard(ctx.data.card);
-                    break;*/
                 case "new_answer":
                     $("#question").animate({ 'min-height': "100px" }, 'fast')
-                    addCard(ctx.data.card);
-                    console.log(ctx);
+                    addCard(ctx.data.card, ctx.data.auto);
                     break;
                 case "showResults":
                     showResults(ctx.data.card);
                     break;
+                case "update_score_for_user":
+                    updateScoreForUser(ctx.data.context);
+                    break;
+                case "start_timer":
+                    startTimer(ctx.data.context.seconds);
+                    break;
+                case "vote":
+                    startTimer(ctx.data.context.seconds);
+                    startPreview();
+                    break;
+                case "message":
+                    M.toast({html: ctx.data.context})
+                    break;
+
                 default:
                     console.log(ctx);
 
@@ -123,7 +205,7 @@
         }
 
         $('#next_question').on('click', function () {
-            $('#answers').html('');
+
             $.get('/action/{{ room.id }}/next');
 
             $("#question").animate({ 'min-height': "300px" }, 'fast');
@@ -135,7 +217,10 @@
         });
 
         $('#show_all').on('click', function (){
-            $('.card').toggleClass('card-hidden');
+
+            $.get('/action/{{ room.id }}/vote_stage', function (){
+                $('.card').removeClass('card-hidden');
+            });
         });
 
         $('#answers').on('click', '.card-reveal', function () {
@@ -148,7 +233,7 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             const cookie = getCookie('token');
-            const centrifuge = new Centrifuge("ws://localhost:8000/connection/websocket");
+            const centrifuge = new Centrifuge("ws://vm672946.vps.masterhost.tech:8000/connection/websocket");
             centrifuge.setToken(cookie);
 
             centrifuge.on('connect', function (ctx) {
@@ -164,6 +249,10 @@
             centrifuge.subscribe("user_{{ app.user.id }}", process);
 
             centrifuge.connect();
+
+            $.get('/action/{{ room.id }}/get_question', function (data){
+                printQuestion(data)
+            });
         }, false);
     </script>
 {% endblock %}

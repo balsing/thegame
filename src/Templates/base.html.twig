@@ -9,9 +9,16 @@
             {{ encore_entry_link_tags('app') }}
             <!-- Compiled and minified CSS -->
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+            <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
             <style>
                 .players_list{
                     min-height: 200px;
+                }
+                #answers .col img{
+                    max-height: 42vh;
+                    max-width: 100%;
+                    width: auto;
+                    margin: auto;
                 }
             </style>
         {% endblock %}
@@ -23,6 +30,7 @@
             <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
             {{ encore_entry_script_tags('app') }}
         {% endblock %}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     </head>
     <body>
         {% block body %}

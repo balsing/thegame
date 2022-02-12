@@ -16,6 +16,11 @@ use Symfony\Component\Serializer\SerializerInterface;
 class WebSocketService
 {
     public const START_GAME_COMMAND = 'start_game';
+    public const VOTE_COMMAND = 'vote';
+    public const REMOVE_CARD_COMMAND = 'remove_card';
+    public const UPDATE_SCORE_FOR_USER_COMMAND = 'update_score_for_user';
+    public const TIMER_COMMAND = 'start_timer';
+    public const NOTIFY_COMMAND = 'message';
     private Client $client;
     private SerializerInterface $serializer;
 
@@ -34,9 +39,9 @@ class WebSocketService
         return $this->client->generateConnectionToken($user->getId());
     }
 
-    public function sendMessageToUser(User $user, $message)
+    public function sendMessageToUser(User $user, $message, $context = [])
     {
-        return $this->client->publish('user_'.$user->getId(), ['action' => $message]);
+        return $this->client->publish('user_'.$user->getId(), ['action' => $message, 'context' => $context]);
     }
 
     public function sendCardToUser(User $user, Card $card)
@@ -46,9 +51,9 @@ class WebSocketService
         return $this->client->publish('user_'.$user->getId(), json_decode($this->serializer->serialize($message, 'json'), true));
     }
 
-    public function sendMessageToRoom(Room $room, $message)
+    public function sendMessageToRoom(Room $room, $message, $context = [])
     {
-        return $this->client->publish('room_'.$room->getId(), ['action' => $message]);
+        return $this->client->publish('room_'.$room->getId(), ['action' => $message, 'context' => $context]);
     }
 
     public function sendQuestionToRoom(Room $room, Question $question)
@@ -58,9 +63,9 @@ class WebSocketService
         return $this->client->publish('room_'.$room->getId(), json_decode($this->serializer->serialize($message, 'json'), true));
     }
 
-    public function sendNewAnswerMessage(User $user, Card $card)
+    public function sendNewAnswerMessage(User $user, Card $card, bool $isAuto = false)
     {
-        $message = new NewAnswerMessage($card);
+        $message = new NewAnswerMessage($card, $isAuto);
 
         return $this->client->publish('user_'.$user->getId(), json_decode($this->serializer->serialize($message, 'json'), true));
     }
@@ -70,5 +75,10 @@ class WebSocketService
         $message = new NewUserToRoomMessage($user);
 
         return $this->client->publish('room_'.$room->getId(), json_decode($this->serializer->serialize($message, 'json'), true));
+    }
+
+    public function sendTimer(Room $room, int $seconds)
+    {
+        return $this->sendMessageToRoom($room, WebSocketService::TIMER_COMMAND, ['seconds' => $seconds]);
     }
 }
